@@ -170,67 +170,111 @@ function extractHreflang($) {
   return tags;
 }
 
-function extractFaq($, schemas) {
-  const faqs = [];
-  const seen = new Set();
+function fuzzyMatch(a, b) {
+  const normalize = s => s.toLowerCase()
+    .replace(/[^\w\s\u3000-\u9fff]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+  const na = normalize(a);
+  const nb = normalize(b);
+  if (na === nb) return true;
+  if (na.includes(nb) || nb.includes(na)) return true;
+  const wordsA = new Set(na.split(' '));
+  const wordsB = new Set(nb.split(' '));
+  const intersection = [...wordsA].filter(w => wordsB.has(w)).length;
+  const union = new Set([...wordsA, ...wordsB]).size;
+  return union > 0 && intersection / union > 0.7;
+}
 
-  for (const schema of schemas) {
-    if (schema.type === "FAQPage" && Array.isArray(schema.raw.mainEntity)) {
-      for (const item of schema.raw.mainEntity) {
-        const q = item.name || "";
-        const a =
-          typeof item.acceptedAnswer === "object"
-            ? item.acceptedAnswer.text || ""
-            : "";
-        if (q && !seen.has(q)) {
-          seen.add(q);
-          faqs.push({ question: q, answer: a });
+function extractFaq($, schemas) {
+  function extractFromSchema() {
+    const items = [];
+    for (const schema of schemas) {
+      if (schema.type === "FAQPage" && Array.isArray(schema.raw.mainEntity)) {
+        for (const item of schema.raw.mainEntity) {
+          const q = item.name || "";
+          const a =
+            typeof item.acceptedAnswer === "object"
+              ? item.acceptedAnswer.text || ""
+              : "";
+          if (q) items.push({ question: q, answer: a, source: "schema:FAQPage" });
         }
       }
-    }
-    if (schema.type === "QAPage") {
-      const q = schema.raw.name || schema.raw.headline || "";
-      const a =
-        schema.raw.acceptedAnswer?.text ||
-        schema.raw.suggestedAnswer?.[0]?.text ||
-        "";
-      if (q && !seen.has(q)) {
-        seen.add(q);
-        faqs.push({ question: q, answer: a });
+      if (schema.type === "QAPage") {
+        const q = schema.raw.name || schema.raw.headline || "";
+        const a =
+          schema.raw.acceptedAnswer?.text ||
+          schema.raw.suggestedAnswer?.[0]?.text ||
+          "";
+        if (q) items.push({ question: q, answer: a, source: "schema:QAPage" });
       }
+    }
+    return items;
+  }
+
+  function extractFromHtml() {
+    const items = [];
+
+    $("details").each((_, el) => {
+      const $summary = $(el).find("summary").first().clone();
+      $summary.find('[aria-hidden="true"], .icon, svg').remove();
+      const q = $summary.text().trim();
+      const a = $(el)
+        .clone()
+        .find("summary")
+        .remove()
+        .end()
+        .text()
+        .trim();
+      if (q) items.push({ question: q, answer: a, source: "html:details" });
+    });
+
+    const faqHeadings = ["faq", "frequently asked questions", "常见问题", "常见问题解答"];
+    $("h2, h3").each((_, el) => {
+      const text = $(el).text().trim().toLowerCase();
+      if (faqHeadings.some((kw) => text.includes(kw))) {
+        const container = $(el).parent();
+        container.find("dt, .question").each((__, qEl) => {
+          const q = $(qEl).text().trim();
+          const a = $(qEl).next("dd, .answer").text().trim();
+          if (q) items.push({ question: q, answer: a, source: "html:heading-section" });
+        });
+      }
+    });
+
+    return items;
+  }
+
+  const schemaFaqs = extractFromSchema();
+  const htmlFaqs = extractFromHtml();
+
+  // Deduplicate schema FAQs by exact question
+  const faqs = [];
+  const seenExact = new Set();
+  for (const item of schemaFaqs) {
+    if (!seenExact.has(item.question)) {
+      seenExact.add(item.question);
+      faqs.push(item);
     }
   }
 
-  $("details").each((_, el) => {
-    const q = $(el).find("summary").first().text().trim();
-    const a = $(el)
-      .clone()
-      .find("summary")
-      .remove()
-      .end()
-      .text()
-      .trim();
-    if (q && !seen.has(q)) {
-      seen.add(q);
-      faqs.push({ question: q, answer: a });
+  // HTML FAQs only added if no fuzzy match exists in schema set
+  if (schemaFaqs.length > 0) {
+    for (const item of htmlFaqs) {
+      const hasFuzzyMatch = faqs.some(s => fuzzyMatch(s.question, item.question));
+      if (!hasFuzzyMatch) {
+        faqs.push(item);
+      }
     }
-  });
-
-  const faqHeadings = ["faq", "frequently asked questions", "常见问题", "常见问题解答"];
-  $("h2, h3").each((_, el) => {
-    const text = $(el).text().trim().toLowerCase();
-    if (faqHeadings.some((kw) => text.includes(kw))) {
-      const container = $(el).parent();
-      container.find("dt, .question").each((__, qEl) => {
-        const q = $(qEl).text().trim();
-        const a = $(qEl).next("dd, .answer").text().trim();
-        if (q && !seen.has(q)) {
-          seen.add(q);
-          faqs.push({ question: q, answer: a });
-        }
-      });
+  } else {
+    // No schema FAQs — add HTML FAQs with dedup among themselves
+    for (const item of htmlFaqs) {
+      if (!seenExact.has(item.question)) {
+        seenExact.add(item.question);
+        faqs.push(item);
+      }
     }
-  });
+  }
 
   return faqs;
 }
