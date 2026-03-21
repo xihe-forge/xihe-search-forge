@@ -1,6 +1,6 @@
 {
   "name": "xihe-search-forge",
-  "version": "0.1.0",
+  "version": "0.3.0",
   "description": "SEO + AEO + GEO search optimization forge by xihe-forge — audit, monitor, and optimize for both traditional search and AI search engines",
   "type": "module",
   "engines": {
@@ -12,7 +12,12 @@
     "citation": "node scripts/check-ai-citation.mjs",
     "llms-txt": "node scripts/generate-llms-txt.mjs",
     "gsc": "node scripts/gsc-pull.mjs",
-    "lighthouse": "node scripts/lighthouse-pull.mjs"
+    "lighthouse": "node scripts/lighthouse-pull.mjs",
+    "content-optimize": "node scripts/content-optimize.mjs",
+    "platform-presence": "node scripts/platform-presence.mjs",
+    "share-of-voice": "node scripts/share-of-voice.mjs",
+    "freshness": "node scripts/freshness-check.mjs",
+    "negative-geo": "node scripts/negative-geo-detect.mjs"
   },
   "dependencies": {
     "cheerio": "^1.0.0"

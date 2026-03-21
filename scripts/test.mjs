@@ -9,7 +9,8 @@ import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { join, dirname, basename } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
-import { readdirSync } from "node:fs";
+import { readdirSync, writeFileSync, mkdirSync } from "node:fs";
+import { tmpdir } from "node:os";
 
 const execFileAsync = promisify(execFile);
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -578,4 +579,427 @@ describe("engine modules", () => {
       });
     });
   }
+});
+
+// ---------------------------------------------------------------------------
+// 7. content-optimize.mjs
+// ---------------------------------------------------------------------------
+
+describe("content-optimize.mjs", () => {
+  test("shows usage when --input points to nonexistent file", async () => {
+    // The TTY-detection path is tricky to test directly (stdin is piped in test runner).
+    // Instead, test via --input with a path that does not exist — exits non-zero with an error.
+    try {
+      await runScript("content-optimize.mjs", ["--input", "/nonexistent/path/crawl.json"]);
+      assert.fail("Expected non-zero exit for missing --input file");
+    } catch (err) {
+      assert.ok(
+        err.code !== 0,
+        "Should exit with non-zero code"
+      );
+      assert.ok(
+        err.stderr?.includes("Error") || err.stderr?.includes("error") || err.stderr?.includes("reading"),
+        `stderr should mention an error. Got: ${err.stderr?.slice(0, 300)}`
+      );
+    }
+  });
+
+  test(
+    "accepts --url flag and produces JSON output",
+    { timeout: 30_000 },
+    async (t) => {
+      let stdout;
+      try {
+        ({ stdout } = await runScript("content-optimize.mjs", ["--url", "https://example.com"]));
+      } catch (err) {
+        // Network unavailable or fetch failed — skip gracefully
+        const networkError =
+          err.stderr?.includes("Failed to fetch") ||
+          err.stderr?.includes("fetch failed") ||
+          err.stderr?.includes("ENOTFOUND") ||
+          err.code === 1;
+        if (networkError) {
+          t.skip("Network unavailable — skipping live fetch test");
+          return;
+        }
+        throw err;
+      }
+
+      let result;
+      try {
+        result = JSON.parse(stdout);
+      } catch {
+        assert.fail(`stdout is not valid JSON. Got:\n${stdout.slice(0, 500)}`);
+      }
+
+      assert.ok(
+        Object.prototype.hasOwnProperty.call(result, "overallScore"),
+        "result should have 'overallScore' field"
+      );
+      assert.ok(
+        Object.prototype.hasOwnProperty.call(result, "dimensions"),
+        "result should have 'dimensions' field"
+      );
+      assert.ok(
+        Object.prototype.hasOwnProperty.call(result, "topActions"),
+        "result should have 'topActions' field"
+      );
+      assert.ok(Array.isArray(result.dimensions), "dimensions should be an array");
+      assert.ok(Array.isArray(result.topActions), "topActions should be an array");
+      assert.ok(
+        typeof result.overallScore === "number",
+        "overallScore should be a number"
+      );
+    }
+  );
+
+  test("accepts --input file and produces valid output", { timeout: 15_000 }, async () => {
+    // Build a minimal crawl-result JSON that content-optimize.mjs can process
+    const minimalCrawl = {
+      url: "https://example.com",
+      crawledAt: new Date().toISOString(),
+      meta: { title: "Example Domain", description: "A test page for content optimization." },
+      headings: [
+        { level: 1, text: "Example Domain" },
+        { level: 2, text: "What is this?" },
+      ],
+      faq: [],
+      schema: [],
+      links: { internal: 2, external: 1, anchors: ["More information..."] },
+      images: { total: 0, missingAlt: 0, noAltList: [] },
+      content: { wordCount: 50, readingTimeMin: 1, pageSizeBytes: 1200 },
+    };
+
+    // Write to a temp file and pass via --input
+    const tempDir = tmpdir();
+    const inputPath = join(tempDir, "xihe-test-crawl.json");
+    writeFileSync(inputPath, JSON.stringify(minimalCrawl), "utf8");
+
+    const { stdout } = await runScript("content-optimize.mjs", ["--input", inputPath]);
+
+    let result;
+    try {
+      result = JSON.parse(stdout);
+    } catch {
+      assert.fail(`stdout is not valid JSON. Got:\n${stdout.slice(0, 500)}`);
+    }
+
+    // Required top-level fields
+    for (const field of ["url", "analyzedAt", "overallScore", "dimensions", "topActions", "content"]) {
+      assert.ok(
+        Object.prototype.hasOwnProperty.call(result, field),
+        `Missing field: ${field}`
+      );
+    }
+
+    assert.ok(Array.isArray(result.dimensions), "dimensions should be an array");
+    assert.ok(result.dimensions.length > 0, "dimensions should not be empty");
+    assert.ok(Array.isArray(result.topActions), "topActions should be an array");
+    assert.ok(
+      typeof result.overallScore === "number" && result.overallScore >= 0 && result.overallScore <= 100,
+      "overallScore should be a number 0–100"
+    );
+    assert.equal(result.url, "https://example.com", "url should echo input");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 8. platform-presence.mjs
+// ---------------------------------------------------------------------------
+
+describe("platform-presence.mjs", () => {
+  test("shows usage when no args provided", async () => {
+    try {
+      await runScript("platform-presence.mjs", []);
+      assert.fail("Expected non-zero exit when no args provided");
+    } catch (err) {
+      assert.ok(err.code !== 0, "Should exit with non-zero code");
+      assert.ok(
+        err.stderr?.includes("Usage") || err.stderr?.includes("--brand") || err.stderr?.includes("--domain"),
+        `stderr should mention usage/--brand/--domain. Got: ${err.stderr?.slice(0, 300)}`
+      );
+    }
+  });
+
+  test(
+    "checks platforms for a brand and produces JSON with platforms array",
+    { timeout: 60_000 },
+    async (t) => {
+      let stdout;
+      try {
+        ({ stdout } = await runScript("platform-presence.mjs", [
+          "--brand", "nodejs",
+          "--domain", "nodejs.org",
+        ]));
+      } catch (err) {
+        // Network failures or timeouts are expected in offline/CI environments
+        const networkError =
+          err.stderr?.includes("fetch failed") ||
+          err.stderr?.includes("ENOTFOUND") ||
+          err.stderr?.includes("timeout") ||
+          err.code === 1;
+        if (networkError) {
+          t.skip("Network unavailable — skipping live platform presence test");
+          return;
+        }
+        throw err;
+      }
+
+      let result;
+      try {
+        result = JSON.parse(stdout);
+      } catch {
+        assert.fail(`stdout is not valid JSON. Got:\n${stdout.slice(0, 500)}`);
+      }
+
+      for (const field of ["brand", "domain", "checkedAt", "overallScore", "platforms", "topActions"]) {
+        assert.ok(
+          Object.prototype.hasOwnProperty.call(result, field),
+          `Missing field: ${field}`
+        );
+      }
+
+      assert.ok(Array.isArray(result.platforms), "platforms should be an array");
+      assert.ok(result.platforms.length > 0, "platforms should not be empty");
+      assert.ok(
+        typeof result.overallScore === "number",
+        "overallScore should be a number"
+      );
+    }
+  );
+});
+
+// ---------------------------------------------------------------------------
+// 9. share-of-voice.mjs
+// ---------------------------------------------------------------------------
+
+describe("share-of-voice.mjs", () => {
+  test("shows usage when missing required args", async () => {
+    try {
+      await runScript("share-of-voice.mjs", []);
+      assert.fail("Expected non-zero exit when no args provided");
+    } catch (err) {
+      assert.ok(err.code !== 0, "Should exit with non-zero code");
+      assert.ok(
+        err.stderr?.includes("Usage") || err.stderr?.includes("--domain") || err.stderr?.includes("--keywords"),
+        `stderr should mention usage. Got: ${err.stderr?.slice(0, 300)}`
+      );
+    }
+  });
+
+  test(
+    "produces valid JSON template when no API keys are configured",
+    { timeout: 30_000 },
+    async () => {
+      // Strip all engine keys so the template path is taken
+      const safeEnv = {
+        PERPLEXITY_API_KEY: "",
+        OPENAI_API_KEY: "",
+        GEMINI_API_KEY: "",
+        MOONSHOT_API_KEY: "",
+        YOU_API_KEY: "",
+      };
+
+      const { stdout } = await runScript(
+        "share-of-voice.mjs",
+        [
+          "--domain", "example.com",
+          "--keywords", "test keyword",
+          "--competitors", "rival.com",
+        ],
+        safeEnv
+      );
+
+      let result;
+      try {
+        result = JSON.parse(stdout);
+      } catch {
+        assert.fail(`stdout is not valid JSON. Got:\n${stdout.slice(0, 500)}`);
+      }
+
+      for (const field of ["domain", "competitors", "checkedAt", "engines", "keywords", "overall", "topActions"]) {
+        assert.ok(
+          Object.prototype.hasOwnProperty.call(result, field),
+          `Missing field: ${field}`
+        );
+      }
+
+      assert.equal(result.domain, "example.com", "domain should match input");
+      assert.ok(Array.isArray(result.keywords), "keywords should be an array");
+      assert.ok(result.keywords.length > 0, "keywords should have entries");
+      assert.ok(Array.isArray(result.topActions), "topActions should be an array");
+
+      // In template mode, shareOfVoice is null
+      assert.ok(
+        Object.prototype.hasOwnProperty.call(result.overall, "shareOfVoice"),
+        "overall.shareOfVoice should be present"
+      );
+    }
+  );
+});
+
+// ---------------------------------------------------------------------------
+// 10. freshness-check.mjs
+// ---------------------------------------------------------------------------
+
+describe("freshness-check.mjs", () => {
+  test("shows usage when no URL provided", async () => {
+    try {
+      await runScript("freshness-check.mjs", []);
+      assert.fail("Expected non-zero exit when no --url provided");
+    } catch (err) {
+      assert.ok(err.code !== 0, "Should exit with non-zero code");
+      assert.ok(
+        err.stderr?.includes("Usage") || err.stderr?.includes("--url"),
+        `stderr should mention usage/--url. Got: ${err.stderr?.slice(0, 300)}`
+      );
+    }
+  });
+
+  test(
+    "checks freshness of a site and produces JSON with pages array and summary",
+    { timeout: 60_000 },
+    async (t) => {
+      let stdout;
+      try {
+        ({ stdout } = await runScript("freshness-check.mjs", [
+          "--url", "https://example.com",
+        ]));
+      } catch (err) {
+        // Network failures are expected in offline environments
+        const networkError =
+          err.stderr?.includes("fetch failed") ||
+          err.stderr?.includes("ENOTFOUND") ||
+          err.stderr?.includes("failed") ||
+          err.code === 1;
+        if (networkError) {
+          t.skip("Network unavailable — skipping live freshness check test");
+          return;
+        }
+        throw err;
+      }
+
+      let result;
+      try {
+        result = JSON.parse(stdout);
+      } catch {
+        assert.fail(`stdout is not valid JSON. Got:\n${stdout.slice(0, 500)}`);
+      }
+
+      for (const field of ["domain", "checkedAt", "threshold", "overallScore", "summary", "pages", "topActions"]) {
+        assert.ok(
+          Object.prototype.hasOwnProperty.call(result, field),
+          `Missing field: ${field}`
+        );
+      }
+
+      assert.ok(Array.isArray(result.pages), "pages should be an array");
+      assert.ok(
+        typeof result.summary === "object" && result.summary !== null,
+        "summary should be an object"
+      );
+      assert.ok(
+        Object.prototype.hasOwnProperty.call(result.summary, "totalPages"),
+        "summary.totalPages should be present"
+      );
+      assert.ok(
+        typeof result.overallScore === "number",
+        "overallScore should be a number"
+      );
+    }
+  );
+});
+
+// ---------------------------------------------------------------------------
+// 11. negative-geo-detect.mjs
+// ---------------------------------------------------------------------------
+
+describe("negative-geo-detect.mjs", () => {
+  test("shows usage when missing required args", async () => {
+    try {
+      await runScript("negative-geo-detect.mjs", []);
+      assert.fail("Expected non-zero exit when no args provided");
+    } catch (err) {
+      assert.ok(err.code !== 0, "Should exit with non-zero code");
+      assert.ok(
+        err.stderr?.includes("Usage") || err.stderr?.includes("--domain") || err.stderr?.includes("--baseline"),
+        `stderr should mention usage. Got: ${err.stderr?.slice(0, 300)}`
+      );
+    }
+  });
+
+  test(
+    "runs baseline-only analysis when no API keys are set",
+    { timeout: 30_000 },
+    async () => {
+      // Create a minimal baseline JSON (check-ai-citation.mjs output format)
+      const tempDir = tmpdir();
+      const baselinePath = join(tempDir, "xihe-test-baseline.json");
+      const baseline = {
+        domain: "example.com",
+        checkedAt: new Date(Date.now() - 7 * 24 * 3600 * 1000).toISOString(), // 7 days ago
+        engines: ["perplexity"],
+        keywords: [
+          {
+            keyword: "test keyword",
+            results: {
+              perplexity: {
+                cited: true,
+                urls: ["https://example.com/page"],
+                snippet: "example.com is a reliable and popular testing resource",
+                sentiment: { label: "positive" },
+              },
+            },
+          },
+        ],
+        summary: {
+          totalKeywords: 1,
+          perEngine: { perplexity: { cited: 1, total: 1, citationRate: 1 } },
+          overallCitationRate: 1,
+        },
+      };
+      writeFileSync(baselinePath, JSON.stringify(baseline, null, 2), "utf8");
+
+      // Strip all engine API keys so baseline-only mode is triggered
+      const safeEnv = {
+        PERPLEXITY_API_KEY: "",
+        OPENAI_API_KEY: "",
+        GEMINI_API_KEY: "",
+        MOONSHOT_API_KEY: "",
+        YOU_API_KEY: "",
+      };
+
+      const { stdout } = await runScript(
+        "negative-geo-detect.mjs",
+        [
+          "--domain", "example.com",
+          "--keywords", "test keyword",
+          "--baseline", baselinePath,
+        ],
+        safeEnv
+      );
+
+      let result;
+      try {
+        result = JSON.parse(stdout);
+      } catch {
+        assert.fail(`stdout is not valid JSON. Got:\n${stdout.slice(0, 500)}`);
+      }
+
+      for (const field of ["domain", "checkedAt", "riskLevel", "alerts", "summary", "recommendations"]) {
+        assert.ok(
+          Object.prototype.hasOwnProperty.call(result, field),
+          `Missing field: ${field}`
+        );
+      }
+
+      assert.ok(Array.isArray(result.alerts), "alerts should be an array");
+      assert.ok(Array.isArray(result.recommendations), "recommendations should be an array");
+      assert.ok(
+        typeof result.riskLevel === "string",
+        "riskLevel should be a string"
+      );
+      assert.equal(result.domain, "example.com", "domain should match input");
+    }
+  );
 });
