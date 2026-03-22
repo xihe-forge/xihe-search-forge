@@ -1,445 +1,106 @@
 # xihe-search-forge
 
-SEO + AEO + GEO 一站式搜索优化工具，by [xihe-forge](https://github.com/xihe-forge)。
+SEO + AEO + GEO 一站式搜索优化锻造炉。
 
-> Google Lighthouse 负责 SEO 基础项。我们负责 Lighthouse 覆盖不到的一切——AI 可引用性、llms.txt、跨 5 个 AI 引擎的引用监测、品牌情感分析、竞品追踪。
+一个命令审计你的网站在传统搜索引擎和 AI 搜索引擎中的可见性，给出可执行的优化建议。
 
----
-
-## 什么是 SEO / AEO / GEO？
-
-| | SEO | AEO | GEO |
-|---|---|---|---|
-| 全称 | Search Engine Optimization | Answer Engine Optimization | Generative Engine Optimization |
-| 目标 | Google/Bing 排名 | AI 搜索引擎引用 | 在 AI 生成内容中被提及 |
-| 关键信号 | 关键词、反链、Core Web Vitals | 结构化数据、直接回答、llms.txt | 品牌权威、内容格式、AI 友好度 |
-| 衡量方式 | 排名、点击、CTR | 是否被引用、引用频率 | 引用情感、竞品对比、提及份额 |
-
-三者共同构成现代搜索可见性的完整图景。
-
----
-
-## 项目结构
-
-```
-xihe-search-forge/
-├── scripts/
-│   ├── audit.mjs                    # 一键全套审计入口（npx xihe-search-forge）
-│   ├── lighthouse-pull.mjs         # Google Lighthouse 集成（免认证）
-│   ├── crawl-page.mjs              # 页面爬取与 AEO/SEO 信号提取
-│   ├── check-ai-citation.mjs       # AI 引用检测（5 引擎 + 情感 + 竞品）
-│   ├── generate-llms-txt.mjs       # llms.txt 生成
-│   ├── gsc-pull.mjs                # Google Search Console 数据拉取
-│   ├── content-optimize.mjs        # GEO 内容优化建议（基于 Princeton 论文）
-│   ├── platform-presence.mjs       # 品牌平台存在度检测（8 大平台）
-│   ├── share-of-voice.mjs          # AI 声量份额对比（多品牌 + 多关键词）
-│   ├── freshness-check.mjs         # 内容新鲜度检测（sitemap + 页面日期信号）
-│   ├── negative-geo-detect.mjs     # 负面 GEO 监测（情感变化 + 协同攻击）
-│   ├── test.mjs                     # 测试套件（48 tests）
-│   └── engines/                    # 各 AI 引擎适配器
-│       ├── perplexity.mjs
-│       ├── chatgpt.mjs
-│       ├── gemini.mjs
-│       ├── kimi.mjs
-│       └── youcom.mjs
-├── skills/
-│   ├── search-forge/SKILL.md              # /search-forge 一键全套
-│   ├── search-forge-seo/SKILL.md          # /search-forge:seo
-│   ├── search-forge-aeo/SKILL.md          # /search-forge:aeo
-│   ├── search-forge-citation/SKILL.md     # /search-forge:citation
-│   ├── search-forge-content/SKILL.md      # /search-forge:content
-│   ├── search-forge-presence/SKILL.md     # /search-forge:presence
-│   ├── search-forge-freshness/SKILL.md    # /search-forge:freshness
-│   ├── search-forge-voice/SKILL.md        # /search-forge:voice
-│   ├── search-forge-defense/SKILL.md      # /search-forge:defense
-│   └── search-forge-report/SKILL.md       # /search-forge:report
-└── data/baselines/                 # 历史数据存储
-```
-
----
-
-## 安装
-
-```bash
-git clone https://github.com/xihe-forge/xihe-search-forge.git
-cd xihe-search-forge
-pnpm install   # 或 npm install
-```
-
----
-
-## npx 使用（无需 clone）
-
-```bash
-npx xihe-search-forge --url https://yoursite.com --brand "YourBrand"
-
-# 短命令
-npx xsf --url https://yoursite.com
-```
+> v0.3 · 11 工具 · 5 AI 引擎 · 48 tests · by [xihe-forge](https://github.com/xihe-forge)
 
 ---
 
 ## 快速开始
 
-一个命令，全套审计：
-
 ```bash
+# npx（无需安装）
+npx xihe-search-forge --url https://yoursite.com
+
+# 或 clone 后使用
+git clone https://github.com/xihe-forge/xihe-search-forge.git
+cd xihe-search-forge && pnpm install
 npm run audit -- --url https://yoursite.com --brand "YourBrand"
-
-# 完整参数
-npm run audit -- \
-  --url https://yoursite.com \
-  --brand "YourBrand" \
-  --keywords "关键词1,关键词2" \
-  --competitors "competitor1.com,competitor2.com" \
-  --output report.json
 ```
-
-输出包含：Lighthouse SEO 基线、页面信号分析、GEO 内容优化建议、平台存在度、内容新鲜度、AI 引用检测（需 API Key）。
-
-如需单独使用某个工具，见下方各工具详细说明。
 
 ---
 
-## 快捷命令
+## 审计输出
 
-所有工具均可通过 npm scripts 调用：
+一次运行覆盖 7 个维度：
 
-| 命令 | 对应脚本 |
-|------|---------|
-| `npm run audit` | audit.mjs（一键全套） |
-| `npm run crawl` | crawl-page.mjs |
-| `npm run citation` | check-ai-citation.mjs |
-| `npm run lighthouse` | lighthouse-pull.mjs |
-| `npm run llms-txt` | generate-llms-txt.mjs |
-| `npm run gsc` | gsc-pull.mjs |
-| `npm run content-optimize` | content-optimize.mjs |
-| `npm run platform-presence` | platform-presence.mjs |
-| `npm run share-of-voice` | share-of-voice.mjs |
-| `npm run freshness` | freshness-check.mjs |
-| `npm run negative-geo` | negative-geo-detect.mjs |
-| `npm test` | 运行全部测试 |
-
----
-
-## 工具
-
-### 1. Lighthouse 集成 — `lighthouse-pull.mjs`
-
-拉取 Google Lighthouse / PageSpeed Insights 数据，建立 SEO 技术基线。免费，无需认证。
-
-```bash
-node scripts/lighthouse-pull.mjs --url https://yoursite.com
-
-# 指定策略
-node scripts/lighthouse-pull.mjs --url https://yoursite.com --strategy mobile
-
-# 保存基线
-node scripts/lighthouse-pull.mjs \
-  --url https://yoursite.com \
-  --output data/baselines/lighthouse-latest.json
-```
-
-输出包含：Performance、Accessibility、Best Practices、SEO 四项得分，以及各审计项通过/失败明细。
-
-默认检查 `seo` 和 `best-practices`，可通过 `--categories` 指定更多类别（如 `performance,accessibility`）。
-
----
-
-### 2. 页面爬取 — `crawl-page.mjs`
-
-爬取任意 URL，提取 SEO/AEO/GEO 相关的所有页面信号。
-
-```bash
-node scripts/crawl-page.mjs https://yoursite.com
-node scripts/crawl-page.mjs https://yoursite.com --output data/baselines/yoursite.json
-```
-
-提取内容：
-- HTTP 状态与关键响应头
-- Meta 标签（title、description、canonical、OG、Twitter Card）
-- 标题层级（H1–H6）
-- JSON-LD Schema 结构化数据
-- 链接统计（内链/外链）
-- 图片 alt 覆盖率
-- hreflang 标签
-- `/llms.txt`、`/robots.txt`、`/sitemap.xml` 检测
-- 内容统计（字数、阅读时长、页面大小）
-- FAQ 检测（Schema / details-summary / 常见问题区域）
-
----
-
-### 3. AI 引用检测 — `check-ai-citation.mjs`
-
-检查你的域名是否被 AI 搜索引擎引用。支持 5 个引擎，含品牌情感分析和竞品对比。
-
-```bash
-# 设置所需引擎的 API Key（至少一个）
-export PERPLEXITY_API_KEY=pplx-xxxx
-export OPENAI_API_KEY=sk-xxxx
-export GEMINI_API_KEY=AIza-xxxx
-export MOONSHOT_API_KEY=sk-xxxx   # Kimi / 月之暗面
-export YOU_API_KEY=xxxx
-
-# 基础检测
-node scripts/check-ai-citation.mjs \
-  --domain yoursite.com \
-  --keywords "关键词1,关键词2,keyword3"
-
-# 指定引擎
-node scripts/check-ai-citation.mjs \
-  --domain yoursite.com \
-  --keywords "关键词1,关键词2" \
-  --engines perplexity,gemini,kimi
-
-# 开启竞品对比
-node scripts/check-ai-citation.mjs \
-  --domain yoursite.com \
-  --keywords "关键词1,关键词2" \
-  --competitors competitor1.com,competitor2.com
-
-# 与上次基线对比
-node scripts/check-ai-citation.mjs \
-  --domain yoursite.com \
-  --keywords "关键词1,关键词2" \
-  --baseline data/baselines/citation-prev.json \
-  --output data/baselines/citation-latest.json
-
-# 查看所有可用引擎
-node scripts/check-ai-citation.mjs --list
-```
-
-**品牌情感分析**：每次引用自动标记 positive / neutral / negative，汇总品牌在 AI 搜索中的整体形象。
-
-**`--competitors` 标志**：在同一批查询中同时检测竞品域名，直接输出引用份额对比。
-
-支持的引擎及所需 API Key：
-
-| 引擎 | 环境变量 | 获取地址 |
-|------|---------|---------|
-| Perplexity | `PERPLEXITY_API_KEY` | https://www.perplexity.ai/settings/api |
-| ChatGPT web search | `OPENAI_API_KEY` | https://platform.openai.com/api-keys |
-| Google Gemini | `GEMINI_API_KEY` | https://aistudio.google.com/app/apikey |
-| Kimi / 月之暗面 | `MOONSHOT_API_KEY` | https://platform.moonshot.cn |
-| You.com | `YOU_API_KEY` | https://you.com/api |
-
----
-
-### 4. llms.txt 生成 — `generate-llms-txt.mjs`
-
-为你的网站生成 [llms.txt](https://llmstxt.org/)，告诉 AI 爬虫你的站点是什么。
-
-```bash
-node scripts/generate-llms-txt.mjs \
-  --url https://yoursite.com \
-  --name "Your Site" \
-  --description "What your site does" \
-  --sitemap https://yoursite.com/sitemap.xml \
-  --output public/llms.txt
-```
-
-同时生成两个文件：
-- `llms.txt` — 简洁版（链接 + 一行描述）
-- `llms-full.txt` — 详细版（每页 2–3 句摘要）
-
----
-
-### 5. GSC 数据拉取 — `gsc-pull.mjs`
-
-拉取 GSC 搜索分析数据，建立传统 SEO 基线。
-
-```bash
-# 方式一：服务账号
-export GOOGLE_APPLICATION_CREDENTIALS=/path/to/service-account.json
-node scripts/gsc-pull.mjs --site https://yoursite.com --days 28
-
-# 方式二：OAuth token
-export GSC_ACCESS_TOKEN=ya29.xxxx
-node scripts/gsc-pull.mjs --site https://yoursite.com --days 28 --output data/baselines/gsc-latest.json
-```
-
-无凭据时会打印详细的设置指南。
-
----
-
-### 6. GEO 内容优化 — `content-optimize.mjs`
-
-基于 Princeton GEO 论文量化发现，分析页面内容并给出 GEO 优化建议。支持直接传入 URL 或接受 `crawl-page.mjs` 的 JSON 输出。
-
-```bash
-# 直接分析 URL
-node scripts/content-optimize.mjs --url https://yoursite.com
-
-# 接受 crawl-page.mjs 的 JSON 输出（管道）
-node scripts/crawl-page.mjs https://yoursite.com | node scripts/content-optimize.mjs
-
-# 从文件读取
-node scripts/content-optimize.mjs --input data/crawl-result.json --output suggestions.json
-```
-
-**6 个评估维度（附论文量化增益）：**
-
-| 维度 | 预期可见度提升 |
-|------|--------------|
-| 专家引用与标注 | +42% |
-| 数据与统计 | +33% |
-| 来源引用 | +30% |
-| 内容结构（H1/H2/FAQ/列表） | 高影响 |
-| 答案密度（直接回答比例） | 高影响 |
-| 技术术语密度 | +12% |
-
-输出包含：各维度评分、`topActions`（优先级最高的 4 条改进建议）、内容指标（字数、引用数、FAQ 数量）。
-
----
-
-### 7. 平台存在度检测 — `platform-presence.mjs`
-
-检查品牌在 AI 常引用的 8 大平台上的存在状况，按平台对 AI 引用的贡献权重给出加权总分。
-
-```bash
-node scripts/platform-presence.mjs --brand "YourBrand" --domain "yourdomain.com"
-
-# 保存结果
-node scripts/platform-presence.mjs --brand "YourBrand" --domain "yourdomain.com" --output presence.json
-```
-
-**覆盖平台（按 AI 引用权重排序）：**
-
-| 平台 | AI 引用权重 |
-|------|------------|
-| Reddit | 40% |
-| Wikipedia | 26% |
-| YouTube | 23% |
-| GitHub | 5% |
-| Stack Overflow | 3% |
-| Hacker News | 2% |
-| Medium | 1% |
-| Quora | 0.5% |
-
-每个平台输出：存在状态（found / not_found / unknown）、评分（0–10）、详情指标、专项改进建议。
-
----
-
-### 8. AI 声量份额 — `share-of-voice.mjs`
-
-计算在指定关键词下，你的品牌在 AI 搜索引用中的占比，并与竞品直接对比。
-
-```bash
-# 基础用法
-node scripts/share-of-voice.mjs \
-  --domain yoursite.com \
-  --keywords "product category,main feature,brand name" \
-  --competitors "competitor1.com,competitor2.com"
-
-# 指定引擎
-node scripts/share-of-voice.mjs \
-  --domain yoursite.com \
-  --keywords "keyword1,keyword2" \
-  --competitors "rival.com" \
-  --engines perplexity,gemini \
-  --output sov.json
-```
-
-输出包含：每个关键词的引用次数（按品牌分）、Share of Voice 百分比、整体 SoV 汇总、`topActions`（标出零引用关键词和被竞品主导的关键词）。无 API Key 时自动生成模板占位结果。
-
----
-
-### 9. 内容新鲜度检测 — `freshness-check.mjs`
-
-抓取站点 sitemap（或回退到首页导航链接），检查每个页面的最后更新时间，标出过期页面。
-
-```bash
-node scripts/freshness-check.mjs --url https://yoursite.com
-
-# 自定义过期阈值（默认 90 天）
-node scripts/freshness-check.mjs --url https://yoursite.com --threshold 60 --output freshness.json
-```
-
-**日期信号优先级：** Sitemap `<lastmod>` → Open Graph `article:modified_time` → JSON-LD `dateModified` → `<time datetime>` → HTTP `Last-Modified` 响应头。
-
-输出包含：每页新鲜度状态（fresh / stale / unknown / error）、距上次更新天数、整体评分（新鲜页面占比）、`topActions`。
-
----
-
-### 10. 负面 GEO 监测 — `negative-geo-detect.mjs`
-
-与历史基线对比，检测 AI 搜索中针对你的品牌的负面情感变化和协同攻击模式。
-
-```bash
-node scripts/negative-geo-detect.mjs \
-  --domain yoursite.com \
-  --keywords "brand name,product category" \
-  --baseline data/baselines/citation-prev.json \
-  --output negative-report.json
-```
-
-**检测的告警类型：**
-
-| 类型 | 严重级别 | 描述 |
+| 维度 | 数据来源 | 免费 |
 |------|---------|------|
-| `sentiment_shift` | high | 情感从正面/中立转变为负面 |
-| `new_negative_source` | medium | 新增未在基线中出现的负面来源 |
-| `attack_signal_detected` | medium | 检测到攻击性语言模式 |
-| `citation_lost` | low | 曾被引用但当前已消失 |
-| `coordinated_attack` | critical | 同一来源域名在 3+ 次引擎/关键词组合中出现 |
-| `cross_engine_source` | high | 同一来源跨 2+ 引擎出现在同一关键词下 |
-
-无 API Key 时自动切换为基线扫描模式（仅分析历史数据中的负面信号）。
+| SEO 技术基线 | Google Lighthouse | ✅ |
+| 页面信号（Meta/Schema/FAQ/链接） | 内置爬虫 | ✅ |
+| GEO 内容优化建议 | Princeton 论文量化模型 | ✅ |
+| 平台存在度（Reddit/YouTube/Wikipedia...） | 8 大平台 API | ✅ |
+| 内容新鲜度 | Sitemap + 页面日期信号 | ✅ |
+| AI 引用检测 + 品牌情感 | Perplexity / ChatGPT / Gemini / Kimi / You.com | 需 API Key |
+| AI 声量占比 vs 竞品 | 同上 | 需 API Key |
 
 ---
 
-## Skills（Claude Code 集成）
+## 工具一览
 
-安装方式：
+| # | 工具 | 命令 | 说明 |
+|---|------|------|------|
+| 0 | **一键全套** | `npm run audit` | 运行以下全部，输出综合报告 |
+| 1 | Lighthouse | `npm run lighthouse` | Google SEO 技术基线 |
+| 2 | 页面爬取 | `npm run crawl` | SEO/AEO/GEO 信号提取 |
+| 3 | AI 引用检测 | `npm run citation` | 5 引擎 + 情感 + 竞品 |
+| 4 | llms.txt 生成 | `npm run llms-txt` | AI 爬虫引导文件 |
+| 5 | GSC 数据 | `npm run gsc` | Google Search Console |
+| 6 | 内容优化 | `npm run content-optimize` | Princeton GEO 论文建议 |
+| 7 | 平台存在度 | `npm run platform-presence` | 8 大高引用平台 |
+| 8 | 声量占比 | `npm run share-of-voice` | 你 vs 竞品引用率 |
+| 9 | 内容新鲜度 | `npm run freshness` | 标记过期页面 |
+| 10 | 负面 GEO 防御 | `npm run negative-geo` | 情感突变 + 协同攻击 |
+
+📖 各工具详细用法和参数：[docs/tools.md](docs/tools.md)
+
+---
+
+## Claude Code Skills
+
 ```bash
-# 全部安装（推荐）
+# 安装全部 skills
 cp -r skills/*/ ~/.claude/skills/
-
-# 或安装单个
-cp -r skills/search-forge/ ~/.claude/skills/search-forge/
 ```
 
 | 命令 | 功能 |
 |------|------|
-| `/search-forge` | **一键全套审计** — 输入 URL，输出综合报告 |
-| `/search-forge:seo` | SEO 审计（Lighthouse + 页面信号） |
-| `/search-forge:aeo` | AEO 审计（AI 可引用性 8 维度评分） |
-| `/search-forge:citation` | AI 引用监测（5 引擎 + 情感 + 竞品） |
-| `/search-forge:content` | GEO 内容优化建议（Princeton 论文） |
-| `/search-forge:presence` | 平台存在度检测（8 大平台） |
-| `/search-forge:freshness` | 内容新鲜度检测 |
-| `/search-forge:voice` | AI 声量占比对比 |
-| `/search-forge:defense` | 负面 GEO 防御检测 |
-| `/search-forge:report` | 前后对比报告（反馈闭环） |
+| `/search-forge` | **一键全套审计** |
+| `/search-forge:seo` | SEO 审计 |
+| `/search-forge:aeo` | AEO 审计（8 维度） |
+| `/search-forge:citation` | AI 引用监测 |
+| `/search-forge:content` | GEO 内容优化 |
+| `/search-forge:presence` | 平台存在度 |
+| `/search-forge:freshness` | 内容新鲜度 |
+| `/search-forge:voice` | 声量占比 |
+| `/search-forge:defense` | 负面 GEO 防御 |
+| `/search-forge:report` | 前后对比报告 |
 
 ---
 
 ## 反馈闭环
 
 ```
-审计（baseline） → 优化 → 再次审计 → /search-forge:report 对比 → 调整 → ...
+/search-forge（基线） → 优化 → /search-forge（复查） → /search-forge:report（对比） → ...
 ```
-
-1. 首次运行 `/search-forge:seo` + `/search-forge:aeo`，得到完整基线（含 Lighthouse 得分）
-2. 按建议修复（添加 Schema、生成 llms.txt、优化内容结构、修复 Core Web Vitals）
-3. 再次审计，用 `/search-forge:report` 对比两次快照
-4. 运行 `/search-forge:citation`，持续追踪 AI 搜索引用率和品牌情感变化
-
-所有历史数据存储在 `data/baselines/` 目录下。
 
 ---
 
-## 免费数据源
+## API Key 配置
 
-| 数据源 | 成本 | 用途 |
-|--------|------|------|
-| 页面爬取 | 免费 | SEO/AEO/GEO 信号提取 |
-| Google Lighthouse / PageSpeed Insights API | 免费，无需认证 | Core Web Vitals、SEO 技术项 |
-| Google Search Console API | 免费 | 排名、点击、CTR |
-| Perplexity / Gemini / Kimi | 有免费额度 | AI 引用检测（含中文市场） |
-| ChatGPT web search / You.com | 有免费额度 | AI 引用检测（英文市场） |
+AI 引用检测相关功能需要至少一个 API Key：
 
-不需要 Ahrefs ($129/月) 或 SEMrush ($139/月)。
+```bash
+export PERPLEXITY_API_KEY=pplx-xxxx    # perplexity.ai/settings/api
+export OPENAI_API_KEY=sk-xxxx          # platform.openai.com/api-keys
+export GEMINI_API_KEY=AIza-xxxx        # aistudio.google.com/app/apikey
+export MOONSHOT_API_KEY=sk-xxxx        # platform.moonshot.cn
+export YOU_API_KEY=xxxx                # you.com/api
+```
+
+无 API Key 时，Lighthouse / 爬虫 / 内容优化 / 平台存在度 / 新鲜度检测仍可正常使用。
 
 ---
 
