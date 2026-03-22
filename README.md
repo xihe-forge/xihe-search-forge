@@ -4,6 +4,8 @@ SEO + AEO + GEO 一站式搜索优化锻造炉。
 
 一个命令审计你的网站在传统搜索引擎和 AI 搜索引擎中的可见性，给出可执行的优化建议。
 
+由 [Xihe AI](https://github.com/xihe-forge) 从熔炉中锻造，面向所有需要在 AI 时代被看见的人。
+
 > v0.3 · 11 工具 · 5 AI 引擎 · 48 tests · by [xihe-forge](https://github.com/xihe-forge)
 
 ---
@@ -101,6 +103,14 @@ export YOU_API_KEY=xxxx                # you.com/api
 ```
 
 无 API Key 时，Lighthouse / 爬虫 / 内容优化 / 平台存在度 / 新鲜度检测仍可正常使用。
+
+---
+
+## 关于曦和 AI
+
+曦和（Xihe）得名于中国神话中驾驭太阳的女神。[xihe-forge](https://github.com/xihe-forge) 是曦和 AI 的开源锻造炉——我们在这里把实用的 AI 工具从想法锤炼成可以直接上手的开源项目。
+
+xihe-search-forge 是第一件出炉的作品。更多面向搜索、内容和增长的 AI 工具正在锻造中，欢迎 Watch 组织动态或参与贡献。
 
 ---
 
