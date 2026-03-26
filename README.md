@@ -3,7 +3,7 @@
 > **命名由来 / Etymology** — 遵循曦和项目三段式命名规范 `xihe-{隐喻}-{功能}`：
 >
 > - **xihe（曦和）** — 品牌。源自中国神话中的太阳女神曦和 / Brand. Xihe, the sun goddess in Chinese mythology
-> - **rinian（日辇）** — 隐喻。日辇是曦和女神每日驾驭载日巡天的太阳车驾，成语「羲和驭日」即描绘此景。SEO 工具如日辇般驱动网站在搜索引擎中被看见 / Metaphor. Rìniǎn is the solar chariot driven by Xihe across the sky each day. This tool drives your website's visibility in search engines
+> - **rinian（日辇）** — 隐喻。日辇是曦和女神每日驾驭载日巡天的太阳车驾。SEO 工具如日辇般驱动网站在搜索引擎中被看见 / Metaphor. Rìniǎn is the solar chariot driven by Xihe across the sky each day. This tool drives your website's visibility in search engines
 > - **seo** — 功能。搜索引擎与 AI 引擎一站式优化 / Function. All-in-one optimization for search engines and AI engines
 
 SEO + AEO + GEO 一站式搜索优化锻造炉。
