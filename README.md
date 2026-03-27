@@ -120,11 +120,9 @@ Without API Keys, Lighthouse / Crawler / Content Optimize / Platform Presence / 
 
 ## 关于曦和 AI / About Xihe AI
 
-曦和（Xihe）得名于中国神话中驾驭太阳的女神。[xihe-forge](https://github.com/xihe-forge) 是曦和 AI 的开源锻造炉——我们在这里把实用的 AI 工具从想法锤炼成可以直接上手的开源项目。
-Xihe is named after the sun goddess who drives the solar chariot in Chinese mythology. [xihe-forge](https://github.com/xihe-forge) is Xihe AI's open-source forge — where we hammer practical AI tools from ideas into ready-to-use open-source projects.
+曦和（Xihe）得名于中国神话中驾驭太阳的女神。[xihe-forge](https://github.com/xihe-forge) 是曦和 AI 的开源锻造炉——我们在这里把实用的 AI 工具从想法锤炼成可以直接上手的开源项目。xihe-rinian-seo 是锻造炉中的第二个开源作品。更多面向搜索、内容和增长的 AI 工具正在锻造中，欢迎关注或参与贡献。
 
-xihe-rinian-seo 是第一件出炉的作品。更多面向搜索、内容和增长的 AI 工具正在锻造中，欢迎 Watch 组织动态或参与贡献。
-xihe-rinian-seo is the first piece out of the forge. More AI tools for search, content, and growth are being forged — watch the org or contribute.
+Xihe is named after the sun goddess who drives the solar chariot in Chinese mythology. [xihe-forge](https://github.com/xihe-forge) is Xihe AI's open-source forge — where we hammer practical AI tools from ideas into ready-to-use open-source projects. xihe-rinian-seo is the second open-source piece out of the forge. More AI tools for search, content, and growth are being forged — follow the org or contribute.
 
 ---
 
